@@ -263,3 +263,95 @@ def enforce_diversity(population, target_sequence, randomization_fraction=0.3):
     population = population[:-num_to_randomize] + \
         random_individuals 
     return population
+
+
+
+def GeneticAlgorithm():
+  
+    global MUTATION_RATE
+    global best_individual_ever
+    global best_fitness_ever
+    best_individual_ever = None
+    best_fitness_ever = float('-inf')
+    population = POPULATION
+
+    for generation in range(GENERATIONS):
+        try:
+            if fitness_values:
+                if all(fit for fit in fitness_values[-30:]):
+                    population = enforce_diversity(population, GOAL_SEQ)
+        except:
+            pass
+        fitness_values = [FitnessFunction(
+            GOAL_SEQ, individual) for individual in population]
+        best_individual = population[fitness_values.index(max(fitness_values))]
+        best_fitness = max(fitness_values)
+        adaptive_mutation_rate(generation, base_rate=0.01,
+                               max_rate=0.8, fitness_history=fitness_values)
+
+      
+        if generation % 10 == 0 :
+            save_midi(best_individual,[generation,best_fitness])
+        plot_data.append((generation, best_fitness))
+
+        if best_fitness > best_fitness_ever:
+            best_fitness_ever = best_fitness
+            best_individual_ever = best_individual
+
+        print(f"Generation {generation + 1}, fitness: {best_fitness}")
+
+        new_population = []
+
+        for _ in range(POPULATION_SIZE // 2):
+
+            parent1 = TournamentSelection(population, GOAL_SEQ)
+            parent2 = TournamentSelection(population, GOAL_SEQ)
+            if random.random() < 0.8:
+                offspring1, offspring2 = PMXCrossover(parent1, parent2)
+            else:
+                offspring1, offspring2 = CrossOverOnePoint(parent1, parent2)
+
+            mutation_functions = [
+                SwapMutate,
+                inversion_mutation,
+                ScrambleMutate,
+                insert_mutation,
+                displacement_mutation,
+                partial_shuffle_mutation,
+                mutation_flip_bit
+            ]
+            if (sum(fitness_values)/len(fitness_values)) - best_fitness < 10:
+                mutation_function = random.choice(
+                    mutation_functions) 
+                offspring1 = mutation_function(offspring1)
+                mutation_function = random.choice(
+                    mutation_functions) 
+                offspring2 = mutation_function(offspring2)
+            else:
+
+                if random.random() < MUTATION_RATE:
+                    mutation_function = random.choice(
+                        mutation_functions) 
+                    offspring1 = mutation_function(offspring1)
+
+                if random.random() < MUTATION_RATE:
+                    mutation_function = random.choice(
+                        mutation_functions)  
+                    offspring2 = mutation_function(offspring2)
+
+            new_population.extend([offspring1, offspring2])
+
+        if best_fitness == 100:
+            save_midi(best_individual,[generation,best_fitness])
+            break
+        population = new_population
+        population = [best_individual] + new_population[:-1]
+
+    print(
+        f"\nBest solution ever: {best_individual_ever}, Fitness: {best_fitness_ever}")
+    print(f"\ntarget seq: {GOAL_SEQ}")
+
+
+GeneticAlgorithm()
+plot_generation_fitness(plot_data, best_fit=(
+    best_individual_ever, best_fitness_ever), max_fitness=100)
