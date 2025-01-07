@@ -1,0 +1,4 @@
+.vscode/
+genetic_venv/
+.DS_store/__pycache__/
+.DS_Store
